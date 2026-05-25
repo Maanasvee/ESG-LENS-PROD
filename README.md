@@ -1,6 +1,8 @@
 # ESG Lens by Bevolve.ai
 
-**Agentic ESG Policy Intelligence Platform** — monitors 30+ global and India-specific regulatory sources, classifies new policies using an AI agent pipeline (Gemini 2.0 Flash), routes them through a Human-in-the-Loop editorial gate, and delivers verified policy intelligence to CSO users via dashboard, push alerts, and personalised email digests.
+**Agentic ESG Policy Intelligence Platform** — monitors global and India-specific regulatory sources, classifies new policies using an AI agent pipeline, routes them through a Human-in-the-Loop editorial gate, and delivers verified policy intelligence to CSO users. 
+
+Constructed with a premium, minimal **light enterprise SaaS design system** styled in professional deep-teal and emerald tones inspired by the **Sustainable Views** platform — corporate-ready, investor-grade, and free of all generic placeholder styling.
 
 ---
 
@@ -134,14 +136,20 @@ FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
 
 > ⚠️ **Security**: Never commit `firebase-service-account.json` to git. It's in `.gitignore`.
 
-### Step 6 — Create Admin User
-After deploying and logging in:
-1. Log in with the admin email at `/login`
-2. Run this SQL to grant admin role:
+### Step 6 — Create Admin User (Role Management)
+
+#### Development / Local Testing (Bypass Mode):
+The system is equipped with an intelligent, domain-based development authenticator. During local development, you do not need to configure complex database records or run SQL scripts:
+* **Editorial Manager (Admin)**: Simply log in with any email ending in **`@bevolve.ai`** (e.g., `maanas@bevolve.ai`, `admin@bevolve.ai`) or containing the word `admin`. The auth system will automatically register you in the local database and grant you full **Editorial Manager** access!
+* **Policy Analyst (User)**: Log in with any standard email (e.g., your actual Google/Gmail IDs like `user@gmail.com`). The system will register you as a **Policy Analyst** to access the premium user feed.
+
+#### Production Mode (Firebase & PostgreSQL):
+After deploying to production and logging in via Google SSO or Email for the first time:
+1. Log in with the target admin email at `/login` to create the initial user row.
+2. Run this SQL query in your database console to elevate your account to the Admin role:
 ```sql
-UPDATE users SET role = 'admin' WHERE email = 'your-admin@email.com';
+UPDATE users SET role = 'admin' WHERE email = 'your-admin@bevolve.ai';
 ```
-Or use Railway's built-in DB console.
 
 ---
 
@@ -270,7 +278,7 @@ The config is hot-reloaded via the Admin Sources UI.
 
 | Variable | Required | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | ✅ | Backend URL (Railway) |
+| `NEXT_PUBLIC_API_URL` | ✅ | Backend URL (`http://127.0.0.1:8000` for local dev; Railway for prod) |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | ✅ | Firebase web API key |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase auth domain |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | Firebase project ID |
