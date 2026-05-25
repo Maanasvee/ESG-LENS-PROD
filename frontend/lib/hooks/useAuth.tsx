@@ -54,7 +54,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 // ── Mock user builder ───────────────────────────────────────────────────────
 
 function buildMockDbUser(uid: string, email: string, role: 'admin' | 'user'): AppUser {
-  const parts = email.split('@')[0].split(/[._-+]/)
+  const parts = email.split('@')[0].split(/[._+\-]/)
   const name = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
   return {
     id: uid,
