@@ -3,15 +3,14 @@ ESG Lens — SQLAlchemy ORM Models
 All 7 database tables with enums, indexes, and relationships.
 """
 
-import uuid
 from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, Enum, ForeignKey,
-    Index, Integer, String, Text, func,
+    Boolean, DateTime, Enum, ForeignKey,
+    Index, Integer, JSON, String, Text, func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import enum
 
@@ -60,6 +59,15 @@ class FetchStrategy(str, enum.Enum):
     playwright = "playwright"
 
 
+def _string_array():
+    """PostgreSQL ARRAY in prod; JSON list for SQLite local dev."""
+    return ARRAY(String).with_variant(JSON(), "sqlite")
+
+
+def _text_array():
+    return ARRAY(Text).with_variant(JSON(), "sqlite")
+
+
 # ──────────────────────────────────────────────────────────────
 # Users
 # ──────────────────────────────────────────────────────────────
@@ -67,15 +75,15 @@ class FetchStrategy(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     firebase_uid: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"), default=UserRole.user, nullable=False
     )
-    sector_prefs: Mapped[List[str]] = mapped_column(ARRAY(String), default=list, nullable=False)
-    jurisdiction_prefs: Mapped[List[str]] = mapped_column(ARRAY(String), default=list, nullable=False)
+    sector_prefs: Mapped[List[str]] = mapped_column(_string_array(), default=list, nullable=False)
+    jurisdiction_prefs: Mapped[List[str]] = mapped_column(_string_array(), default=list, nullable=False)
     email_digest_opt_in: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -91,7 +99,7 @@ class User(Base):
 class Source(Base):
     __tablename__ = "sources"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     source_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # e.g., "portal", "news", "standard"
@@ -123,10 +131,10 @@ class Policy(Base):
         Index("ix_policies_created_at", "created_at"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     source_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger, ForeignKey("sources.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("sources.id", ondelete="SET NULL"), nullable=True
     )
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     raw_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -134,7 +142,7 @@ class Policy(Base):
     pillar: Mapped[Optional[PolicyPillar]] = mapped_column(
         Enum(PolicyPillar, name="policy_pillar"), nullable=True
     )
-    sectors: Mapped[List[str]] = mapped_column(ARRAY(String), default=list, nullable=False)
+    sectors: Mapped[List[str]] = mapped_column(_string_array(), default=list, nullable=False)
     status: Mapped[Optional[PolicyStatus]] = mapped_column(
         Enum(PolicyStatus, name="policy_status"), nullable=True
     )
@@ -153,7 +161,7 @@ class Policy(Base):
     rejection_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     master_policy_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger, ForeignKey("policies.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("policies.id", ondelete="SET NULL"), nullable=True
     )
     chroma_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
@@ -173,10 +181,10 @@ class Policy(Base):
 class PolicyAlias(Base):
     __tablename__ = "policy_aliases"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     alias_text: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
     master_policy_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("policies.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("policies.id", ondelete="CASCADE"), nullable=False
     )
 
     master_policy: Mapped["Policy"] = relationship("Policy", back_populates="aliases")
@@ -192,7 +200,7 @@ class SeenHash(Base):
         Index("ix_seen_hashes_url_hash", "url_hash", unique=True),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     url_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -206,9 +214,9 @@ class SeenHash(Base):
 class Digest(Base):
     __tablename__ = "digests"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(
@@ -226,14 +234,14 @@ class Digest(Base):
 class PipelineRun(Base):
     __tablename__ = "pipeline_runs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     triggered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     items_fetched: Mapped[int] = mapped_column(Integer, default=0)
     items_after_dedup: Mapped[int] = mapped_column(Integer, default=0)
     llm_calls_made: Mapped[int] = mapped_column(Integer, default=0)
-    errors: Mapped[List[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
+    errors: Mapped[List[str]] = mapped_column(_text_array(), default=list, nullable=False)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     @property

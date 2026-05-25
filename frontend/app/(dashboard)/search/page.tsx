@@ -1,10 +1,10 @@
 // ESG Lens — Semantic Search Page
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { api, SearchResult } from '@/lib/api'
-import { Search, Sparkles, ExternalLink } from 'lucide-react'
+import { Search, ExternalLink } from 'lucide-react'
 
 const EXAMPLE_QUERIES = [
   'Scope 3 reporting rules in India',
@@ -59,16 +59,16 @@ export default function SearchPage() {
         <div className="page-header" style={{ textAlign: 'center', padding: 'var(--space-8) 0' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
             <div style={{
-              width: 56, height: 56, background: 'var(--color-accent-glow)',
-              border: '1px solid rgba(34,197,94,0.3)', borderRadius: 'var(--radius-lg)',
+              width: 56, height: 56, background: 'var(--color-primary-light)',
+              border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Sparkles size={24} style={{ color: 'var(--color-accent)' }} />
+              <Search size={24} style={{ color: 'var(--color-primary)' }} />
             </div>
           </div>
-          <h1 className="page-title">Semantic Policy Search</h1>
+          <h1 className="page-title">Regulatory Intelligence Search</h1>
           <p className="page-subtitle" style={{ fontSize: 15 }}>
-            Ask a question in plain English. Powered by Gemini embeddings.
+            Ask a question in plain English — search across all verified ESG regulatory policies.
           </p>
         </div>
 
@@ -129,16 +129,16 @@ export default function SearchPage() {
                   style={{ padding: 'var(--space-5)', animation: `fadeInUp 300ms ease both`, animationDelay: `${idx * 50}ms` }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {r.pillar && (
-                        <span className={`badge badge-pillar-${r.pillar}`}>{r.pillar}</span>
+                        {r.pillar && (
+                        <span className={`badge badge-${r.pillar}`}>{r.pillar === 'E' ? 'Environmental' : r.pillar === 'S' ? 'Social' : 'Governance'}</span>
                       )}
                       {r.urgency && (
-                        <span className={`badge badge-urgency-${r.urgency}`}>{r.urgency}</span>
+                        <span className={`badge badge-${r.urgency}`}>{r.urgency}</span>
                       )}
                       <span style={{
-                        fontSize: 11, padding: '3px 10px', borderRadius: 'var(--radius-full)',
-                        background: 'rgba(34,197,94,0.08)', color: 'var(--color-accent)',
-                        border: '1px solid rgba(34,197,94,0.2)', fontWeight: 600,
+                        fontSize: 11, padding: '2px 8px', borderRadius: 'var(--radius-sm)',
+                        background: 'var(--color-enacted-bg)', color: 'var(--color-enacted)',
+                        border: '1px solid #A7F3D0', fontWeight: 600,
                       }}>
                         {(r.similarity * 100).toFixed(0)}% match
                       </span>
@@ -148,7 +148,7 @@ export default function SearchPage() {
                       <ExternalLink size={13} />
                     </a>
                   </div>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 6, lineHeight: 1.4 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6, lineHeight: 1.4 }}>
                     {r.title}
                   </h3>
                   {r.summary && (

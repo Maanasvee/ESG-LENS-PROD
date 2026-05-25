@@ -15,6 +15,7 @@ export default function AdminQueuePage() {
   const router = useRouter()
   const [policies, setPolicies] = useState<AdminPolicyRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [processing, setProcessing] = useState<Set<number>>(new Set())
   const [editTarget, setEditTarget] = useState<AdminPolicyRow | null>(null)
@@ -28,11 +29,16 @@ export default function AdminQueuePage() {
 
   async function load() {
     setLoading(true)
+    setError(null)
     try {
       const data = await api.getModerationQueue()
       setPolicies(data)
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    } catch (e: any) {
+      console.error(e)
+      setError(e.message || 'Failed to load editorial moderation queue. Please verify backend connection.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { if (isAdmin) load() }, [isAdmin])
@@ -98,7 +104,7 @@ export default function AdminQueuePage() {
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="page-title">Moderation Queue</h1>
+          <h1 className="page-title">Editorial Review Queue</h1>
           <p className="page-subtitle">
             {loading ? 'Loading…' : `${policies.length} policies pending review`}
           </p>
@@ -110,7 +116,21 @@ export default function AdminQueuePage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {error ? (
+        <div className="card" style={{ padding: 'var(--space-6)', textAlign: 'center', border: '1px solid rgba(220,38,38,0.2)' }}>
+          <div style={{ display: 'inline-flex', width: 44, height: 44, background: 'var(--color-critical-bg)', borderRadius: 'var(--radius-md)', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-3)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-critical)" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Unable to Load Moderation Queue</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 460, margin: '0 auto var(--space-4)', lineHeight: 1.6 }}>
+            {error}
+          </p>
+          <button type="button" className="btn btn-secondary" onClick={load} style={{ gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Retry Loading
+          </button>
+        </div>
+      ) : loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 56 }} />)}
         </div>
@@ -148,13 +168,13 @@ export default function AdminQueuePage() {
                     </td>
                     <td style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{policy.source_name || '—'}</td>
                     <td>
-                      {policy.pillar && <span className={`badge badge-pillar-${policy.pillar}`}>{policy.pillar}</span>}
+                      {policy.pillar && <span className={`badge badge-${policy.pillar}`}>{policy.pillar === 'E' ? 'Environmental' : policy.pillar === 'S' ? 'Social' : 'Governance'}</span>}
                     </td>
                     <td>
-                      {policy.urgency && <span className={`badge badge-urgency-${policy.urgency}`}>{policy.urgency}</span>}
+                      {policy.urgency && <span className={`badge badge-${policy.urgency}`}>{policy.urgency}</span>}
                     </td>
                     <td>
-                      {policy.status && <span className={`badge badge-status badge-status-${policy.status}`}>{policy.status}</span>}
+                      {policy.status && <span className={`badge badge-${policy.status}`}>{policy.status}</span>}
                     </td>
                     <td style={{ fontSize: 12 }}>{policy.jurisdiction || '—'}</td>
                     <td style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
@@ -187,12 +207,12 @@ export default function AdminQueuePage() {
                       <td colSpan={8} className="moderation-expand-panel">
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
                           <div>
-                            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>AI Summary</p>
+                            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>AI-Generated Summary</p>
                             <p style={{ lineHeight: 1.6 }}>{policy.summary || 'No summary generated.'}</p>
                           </div>
                           <div>
                             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>Raw Text Excerpt</p>
-                            <p style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--color-surface)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', lineHeight: 1.5 }}>
+                            <p style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--color-bg-subtle)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', lineHeight: 1.5 }}>
                               {policy.raw_text_excerpt || '—'}
                             </p>
                           </div>
@@ -216,7 +236,7 @@ export default function AdminQueuePage() {
                           <AlertTriangle size={14} style={{ color: 'var(--color-critical)', flexShrink: 0 }} />
                           <input placeholder="Rejection reason (optional)…" value={rejectNote}
                             onChange={e => setRejectNote(e.target.value)}
-                            style={{ flex: 1 }} id={`reject-note-${policy.id}`} />
+                            className="form-input" style={{ flex: 1 }} id={`reject-note-${policy.id}`} />
                           <button id={`confirm-reject-${policy.id}`} className="btn btn-danger btn-sm"
                             onClick={() => handleReject(policy.id)}>
                             Confirm Reject

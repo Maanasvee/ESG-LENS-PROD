@@ -10,12 +10,12 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'ESG Lens — Policy Intelligence by Bevolve.ai',
-  description: 'Real-time ESG regulatory intelligence for sustainability leaders. Monitor 30+ global and India-specific policy sources, verified by editorial experts.',
-  keywords: ['ESG', 'sustainability', 'regulation', 'policy', 'SEBI', 'India', 'environmental', 'governance'],
+  title: 'ESG Lens — Regulatory Intelligence Platform by Bevolve.ai',
+  description: 'AI-powered ESG regulatory intelligence. Monitor global sustainability policies, track compliance obligations, and receive verified regulatory alerts — built for CSOs and sustainability leaders.',
+  keywords: ['ESG', 'sustainability', 'regulatory intelligence', 'compliance', 'SEBI', 'India', 'policy monitoring', 'governance'],
   openGraph: {
     title: 'ESG Lens by Bevolve.ai',
-    description: 'Agentic ESG Policy Intelligence Platform',
+    description: 'Enterprise ESG Policy Intelligence Platform',
     type: 'website',
   },
 }
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <head>
-        <meta name="theme-color" content="#0A0F0D" />
+        <meta name="theme-color" content="#FFFFFF" />
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>

@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     pipeline_secret: str = "change-me"
 
-    # Database
-    database_url: str = "postgresql+asyncpg://user:pw@localhost:5432/eslens"
+    # Database (SQLite default for local dev; set DATABASE_URL for PostgreSQL)
+    database_url: str = "sqlite+aiosqlite:///./esglens.db"
 
     # LLM
     google_api_key: str = ""

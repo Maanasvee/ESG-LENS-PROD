@@ -34,6 +34,7 @@ export default function SourcesPage() {
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState<Set<number>>(new Set())
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.push('/')
@@ -41,9 +42,15 @@ export default function SourcesPage() {
 
   async function load() {
     setLoading(true)
-    try { setSources(await api.getSources()) }
-    catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    setError(null)
+    try {
+      setSources(await api.getSources())
+    } catch (e: any) {
+      console.error(e)
+      setError(e.message || 'Failed to load regulatory sources. Please verify backend connection.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { if (isAdmin) load() }, [isAdmin])
@@ -92,7 +99,7 @@ export default function SourcesPage() {
     <DashboardLayout>
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="page-title">Source Management</h1>
+          <h1 className="page-title">Regulatory Source Management</h1>
           <p className="page-subtitle">{sources.length} total sources · {sources.filter(s => s.is_active).length} active</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -105,11 +112,27 @@ export default function SourcesPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="card" style={{ padding: 'var(--space-6)', textAlign: 'center', border: '1px solid rgba(220,38,38,0.2)', marginBottom: 'var(--space-6)' }}>
+          <div style={{ display: 'inline-flex', width: 44, height: 44, background: 'var(--color-critical-bg)', borderRadius: 'var(--radius-md)', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-3)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-critical)" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Unable to Load Sources</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 460, margin: '0 auto var(--space-4)', lineHeight: 1.6 }}>
+            {error}
+          </p>
+          <button type="button" className="btn btn-secondary" onClick={load} style={{ gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Retry Loading
+          </button>
+        </div>
+      )}
+
       {/* Add/Edit Form */}
       {showForm && (
         <div className="card" style={{ marginBottom: 'var(--space-6)', border: '1px solid rgba(34,197,94,0.3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>
               {editId !== null ? 'Edit Source' : 'Add New Source'}
             </h2>
             <button className="btn btn-ghost btn-sm" onClick={() => { setShowForm(false); setEditId(null) }}><X size={16} /></button>
@@ -220,7 +243,7 @@ function SourceTable({ sources, loading, toggling, onToggle, onEdit }: {
                   {toggling.has(src.id)
                     ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                     : src.is_active
-                      ? <Wifi size={14} style={{ color: 'var(--color-accent)' }} />
+                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                       : <WifiOff size={14} style={{ color: 'var(--color-text-muted)' }} />}
                 </button>
               </td>
@@ -231,7 +254,7 @@ function SourceTable({ sources, loading, toggling, onToggle, onEdit }: {
                 </a>
               </td>
               <td style={{ fontSize: 12 }}>{src.jurisdiction || '—'}</td>
-              <td>{src.pillar_hint ? <span className={`badge badge-pillar-${src.pillar_hint}`}>{src.pillar_hint}</span> : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Auto</span>}</td>
+              <td>{src.pillar_hint ? <span className={`badge badge-${src.pillar_hint}`}>{src.pillar_hint === 'E' ? 'Environmental' : src.pillar_hint === 'S' ? 'Social' : 'Governance'}</span> : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Auto</span>}</td>
               <td style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Every {src.frequency_minutes}m</td>
               <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                 {src.last_checked_at ? new Date(src.last_checked_at).toLocaleDateString() : 'Never'}

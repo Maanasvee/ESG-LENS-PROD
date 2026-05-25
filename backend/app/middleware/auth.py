@@ -42,6 +42,34 @@ async def get_current_user(
 
     token = credentials.credentials
 
+    # Development Mock Authentication Bypass
+    from app.config import get_settings
+    settings = get_settings()
+    if settings.app_env == "development" and token.startswith("mock-"):
+        parts = token.split(":")
+        role_part = "admin" if "admin" in parts[0] else "user"
+        email = parts[1] if len(parts) > 1 else f"{role_part}@bevolve.ai"
+        firebase_uid = token
+        
+        # Build user name from email prefix
+        prefix_parts = email.split("@")[0].split(".")
+        name = " ".join(p.capitalize() for p in prefix_parts) if prefix_parts else f"Mock {role_part.capitalize()}"
+        
+        result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            user = User(
+                firebase_uid=firebase_uid,
+                email=email,
+                name=name,
+                role=UserRole.admin if role_part == "admin" else UserRole.user,
+            )
+            db.add(user)
+            await db.flush()
+            logger.info(f"Mock user registered in development: {email} (role={user.role})")
+        return user
+
     try:
         decoded = await verify_firebase_token(token)
     except Exception as e:

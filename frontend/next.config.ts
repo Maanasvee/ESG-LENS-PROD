@@ -1,5 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: import.meta.dirname,
+  },
   // Allow embedding in iframe from bevolve.ai
   async headers() {
     return [
@@ -41,4 +45,4 @@ const nextConfig = {
   transpilePackages: [],
 }
 
-module.exports = nextConfig
+export default nextConfig

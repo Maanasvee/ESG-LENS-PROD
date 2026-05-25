@@ -1,18 +1,34 @@
 // ESG Lens — Typed API Client
 // All requests include Firebase ID token as Bearer auth header.
 
-import { auth } from './firebase'
+import { auth, isMockAuth } from './firebase'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+
+function mockBearerToken(): string | null {
+  if (typeof window === 'undefined') return null
+  const saved = localStorage.getItem('mock_user')
+  if (!saved) return null
+  try {
+    const u = JSON.parse(saved) as { uid?: string }
+    return u.uid ?? null
+  } catch {
+    return null
+  }
+}
 
 async function getAuthHeaders(): Promise<HeadersInit> {
-  const user = auth.currentUser
-  if (!user) return { 'Content-Type': 'application/json' }
-  const token = await user.getIdToken()
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+  const base: HeadersInit = { 'Content-Type': 'application/json' }
+
+  if (isMockAuth) {
+    const token = mockBearerToken()
+    return token ? { ...base, Authorization: `Bearer ${token}` } : base
   }
+
+  if (!auth?.currentUser) return base
+
+  const token = await auth.currentUser.getIdToken()
+  return { ...base, Authorization: `Bearer ${token}` }
 }
 
 async function apiFetch<T>(
@@ -42,12 +58,18 @@ export interface Policy {
   source_url: string
   jurisdiction: string | null
   pillar: 'E' | 'S' | 'G' | null
+  applicability?: string | null
   sectors: string[]
   status: 'Proposed' | 'Consultation' | 'Enacted' | 'Amended' | null
+  display_status?: string
   urgency: 'Low' | 'Medium' | 'High' | 'Critical' | null
+  obligation?: string
+  provision_subtype?: string
   summary: string | null
   published_date: string | null
+  latest_update?: string
   created_at: string
+  ai_verified?: boolean
 }
 
 export interface PaginatedPolicies {
@@ -59,14 +81,31 @@ export interface PaginatedPolicies {
 }
 
 export interface PolicyFilters {
+  q?: string
+  title_only?: boolean
   pillar?: string
   jurisdiction?: string
   sector?: string
+  source_id?: number | string
   urgency?: string
   status?: string
-  sort?: 'recent' | 'urgency'
+  obligation?: string
+  sort?: 'latest' | 'alphabetical' | 'relevance' | 'urgency' | 'recent'
   page?: number
   page_size?: number
+}
+
+export interface TrackerMeta {
+  product_name: string
+  tagline: string
+  sectors: string[]
+  jurisdictions: string[]
+  applicability: { value: string; label: string }[]
+  obligations: string[]
+  regulatory_statuses: string[]
+  provision_subtypes: string[]
+  sources: Source[]
+  active_source_count: number
 }
 
 export interface User {
@@ -144,9 +183,18 @@ export const api = {
   async getPolicies(filters: PolicyFilters = {}): Promise<PaginatedPolicies> {
     const params = new URLSearchParams()
     Object.entries(filters).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== '') params.append(k, String(v))
+      if (v === undefined || v === null || v === '') return
+      if (k === 'title_only') {
+        if (v) params.append('title_only', 'true')
+        return
+      }
+      params.append(k, String(v))
     })
     return apiFetch(`/api/policies?${params}`)
+  },
+
+  async getTrackerMeta(): Promise<TrackerMeta> {
+    return apiFetch('/api/policies/tracker-meta')
   },
 
   async getPolicy(id: number): Promise<Policy> {

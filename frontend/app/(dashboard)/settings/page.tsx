@@ -17,7 +17,16 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    api.getTaxonomy().then(setTaxonomy)
+    api.getTaxonomy()
+      .then(setTaxonomy)
+      .catch(e => {
+        console.error('Failed to load taxonomy:', e)
+        // Fallback to default lists in case of API failure so the page doesn't crash
+        setTaxonomy({
+          sectors: ['Energy', 'Finance', 'Manufacturing', 'Real Estate', 'FMCG', 'Technology', 'Healthcare'],
+          jurisdictions: ['India', 'EU', 'US', 'UK', 'Global']
+        })
+      })
   }, [])
 
   useEffect(() => {
@@ -47,18 +56,18 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div style={{ maxWidth: 640 }}>
         <div className="page-header">
-          <h1 className="page-title">Notification Preferences</h1>
+          <h1 className="page-title">Alert Preferences</h1>
           <p className="page-subtitle">Personalise your ESG intelligence feed and digest emails</p>
         </div>
 
         {/* Sectors */}
         <div className="card" style={{ marginBottom: 'var(--space-5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
-            <div style={{ width: 36, height: 36, background: 'var(--color-accent-glow)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Layers size={18} style={{ color: 'var(--color-accent)' }} />
+            <div style={{ width: 36, height: 36, background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Layers size={18} style={{ color: 'var(--color-primary)' }} />
             </div>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>Sectors</h2>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Industry Sectors</h2>
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Receive alerts for policies affecting these industries</p>
             </div>
           </div>
@@ -82,11 +91,11 @@ export default function SettingsPage() {
         {/* Jurisdictions */}
         <div className="card" style={{ marginBottom: 'var(--space-5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
-            <div style={{ width: 36, height: 36, background: 'var(--color-blue-glow)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Globe size={18} style={{ color: 'var(--color-blue)' }} />
+            <div style={{ width: 36, height: 36, background: 'var(--color-pillar-s-bg)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Globe size={18} style={{ color: 'var(--color-pillar-s)' }} />
             </div>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>Jurisdictions</h2>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Regulatory Jurisdictions</h2>
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Receive alerts for policies from these regions</p>
             </div>
           </div>
@@ -110,7 +119,7 @@ export default function SettingsPage() {
                 <Mail size={18} style={{ color: 'var(--color-medium)' }} />
               </div>
               <div>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>Daily Email Digest</h2>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Weekly Email Digest</h2>
                 <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Personalised brief delivered at 8:00 AM IST</p>
               </div>
             </div>
@@ -118,9 +127,9 @@ export default function SettingsPage() {
               <input type="checkbox" checked={emailOptIn} onChange={e => setEmailOptIn(e.target.checked)}
                 style={{ display: 'none' }} />
               <div style={{
-                position: 'absolute', inset: 0, background: emailOptIn ? 'var(--color-accent)' : 'var(--color-surface-3)',
+                position: 'absolute', inset: 0, background: emailOptIn ? 'var(--color-primary)' : 'var(--color-surface-2)',
                 borderRadius: 13, transition: 'background 200ms',
-                border: `1px solid ${emailOptIn ? 'rgba(34,197,94,0.5)' : 'var(--color-border)'}`,
+                border: `1px solid ${emailOptIn ? 'var(--color-primary)' : 'var(--color-border)'}`,
               }} />
               <div style={{
                 position: 'absolute', top: 3, left: emailOptIn ? 25 : 3, width: 18, height: 18,

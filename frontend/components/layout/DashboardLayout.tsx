@@ -1,13 +1,12 @@
-// ESG Lens — Sidebar Navigation Layout Component
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from '@/components/notifications/NotificationBell'
 import {
-  FileText, Search, Settings, LayoutDashboard,
-  Shield, Radio, ClipboardList, LogOut, Activity
+  LayoutGrid, FileText, Search, Settings,
+  Shield, Radio, Activity, LogOut, ChevronRight
 } from 'lucide-react'
 
 interface NavItemProps {
@@ -28,73 +27,152 @@ function NavItem({ href, label, icon, id }: NavItemProps) {
   )
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+interface DashboardLayoutProps {
+  children: React.ReactNode
+  pageTitle?: string
+  pageSubtitle?: string
+}
+
+export default function DashboardLayout({ children, pageTitle, pageSubtitle }: DashboardLayoutProps) {
   const { dbUser, logout, isAdmin } = useAuth()
+  const router = useRouter()
+
+  const roleName = dbUser?.role === 'admin' ? 'Editorial Manager' : 'Policy Analyst'
+  const userInitial = (dbUser?.name || dbUser?.email || 'U')[0].toUpperCase()
+
+  async function handleLogout() {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <div className="layout-root">
-      {/* Sidebar */}
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="layout-sidebar">
         {/* Logo */}
         <div className="nav-logo">
-          <div className="nav-logo-text">🌿 ESG Lens</div>
-          <div className="nav-logo-sub">by Bevolve.ai</div>
+          <div className="nav-logo-mark">
+            <div className="nav-logo-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span className="nav-logo-text">ESG Lens</span>
+          </div>
+          <div className="nav-logo-sub">Regulatory Intelligence Platform</div>
         </div>
 
-        {/* Nav */}
+        {/* Navigation */}
         <nav className="nav-section">
-          <div className="nav-section-label">Intelligence</div>
-          <NavItem href="/" label="Policy Feed" icon={<FileText size={16} />} id="nav-feed" />
-          <NavItem href="/search" label="Semantic Search" icon={<Search size={16} />} id="nav-search" />
+          <span className="nav-section-label">Intelligence</span>
+          <NavItem
+            href="/tracker"
+            label="Policy Intelligence Feed"
+            icon={<FileText size={15} />}
+            id="nav-tracker"
+          />
+          <NavItem
+            href="/search"
+            label="Regulatory Search"
+            icon={<Search size={15} />}
+            id="nav-search"
+          />
 
-          <div className="nav-section-label" style={{ marginTop: 16 }}>Account</div>
-          <NavItem href="/settings" label="Preferences" icon={<Settings size={16} />} id="nav-settings" />
+          <span className="nav-section-label">Account</span>
+          <NavItem
+            href="/settings"
+            label="Alert Preferences"
+            icon={<Settings size={15} />}
+            id="nav-settings"
+          />
 
           {isAdmin && (
             <>
-              <div className="nav-section-label" style={{ marginTop: 16, color: 'rgba(168, 85, 247, 0.8)' }}>Admin</div>
-              <NavItem href="/admin" label="Mod Queue" icon={<Shield size={16} />} id="nav-admin-queue" />
-              <NavItem href="/admin/sources" label="Sources" icon={<Radio size={16} />} id="nav-admin-sources" />
-              <NavItem href="/admin/logs" label="Pipeline Logs" icon={<Activity size={16} />} id="nav-admin-logs" />
+              <span className="nav-section-label" style={{ color: 'var(--color-pillar-g)', opacity: 0.9 }}>
+                Editorial
+              </span>
+              <NavItem
+                href="/admin"
+                label="Review Queue"
+                icon={<Shield size={15} />}
+                id="nav-admin-queue"
+              />
+              <NavItem
+                href="/admin/sources"
+                label="Source Management"
+                icon={<Radio size={15} />}
+                id="nav-admin-sources"
+              />
+              <NavItem
+                href="/admin/logs"
+                label="Pipeline Logs"
+                icon={<Activity size={15} />}
+                id="nav-admin-logs"
+              />
             </>
           )}
         </nav>
 
-        {/* User footer */}
-        <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <div style={{
-              width: 32, height: 32, background: 'var(--color-accent-glow)',
-              border: '1px solid rgba(34,197,94,0.3)', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0,
-            }}>
-              {dbUser?.name?.[0]?.toUpperCase() || dbUser?.email?.[0]?.toUpperCase() || '?'}
+        {/* User Footer */}
+        <div className="nav-user-footer">
+          <div className="nav-user-avatar">{userInitial}</div>
+          <div className="nav-user-info">
+            <div className="nav-user-name">
+              {dbUser?.name || dbUser?.email?.split('@')[0] || 'User'}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {dbUser?.name || 'User'}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {dbUser?.role === 'admin' ? '🛡️ Admin' : '👤 User'}
-              </div>
-            </div>
-            <button id="logout-btn" onClick={logout} className="btn btn-ghost btn-sm" title="Sign out">
-              <LogOut size={14} />
-            </button>
+            <div className="nav-user-role">{roleName}</div>
           </div>
+          <button
+            id="logout-btn"
+            onClick={handleLogout}
+            className="btn btn-ghost btn-sm"
+            title="Sign out"
+            style={{ width: 30, height: 30, padding: 0, borderRadius: 'var(--radius-md)', flexShrink: 0 }}
+          >
+            <LogOut size={14} />
+          </button>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ── Main Area ────────────────────────────────────────────── */}
       <div className="layout-main">
         {/* Topbar */}
         <header className="layout-topbar">
-          <div style={{ flex: 1 }} />
-          <NotificationBell />
+          <div style={{ flex: 1 }}>
+            {pageTitle && (
+              <div className="layout-topbar-title">
+                {pageTitle}
+                {pageSubtitle && (
+                  <span className="layout-topbar-sub"> — {pageSubtitle}</span>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--color-pillar-g)',
+                  padding: '4px 10px',
+                  background: 'var(--color-pillar-g-bg)',
+                  borderRadius: 'var(--radius-sm)',
+                  textDecoration: 'none',
+                  border: '1px solid rgba(124,58,237,0.2)'
+                }}
+              >
+                Editorial Manager
+              </Link>
+            )}
+            <NotificationBell />
+          </div>
         </header>
 
-        {/* Content */}
+        {/* Page Content */}
         <main className="layout-content">
           {children}
         </main>

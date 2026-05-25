@@ -1,351 +1,237 @@
-# ============================================================
-# ESG Lens — Central Runtime Configuration
-# All source configs, prompt templates, urgency alert thresholds,
-# and cron schedules are defined here.
-# No code rewrite required to add a source or change a prompt.
-# ============================================================
-
 app:
-  name: "ESG Lens by Bevolve.ai"
-  version: "1.0.0"
-  environment: production  # development | production
-
-# ──────────────────────────────────────────────────────────────
-# LLM Configuration
-# ──────────────────────────────────────────────────────────────
+  name: ESG Lens by Bevolve.ai
+  version: 1.0.0
+  environment: production
 llm:
-  primary: "gemini-2.0-flash"
-  fallback: "llama-3.3-70b-versatile"  # Groq model name
-  embedding_model: "models/text-embedding-004"
+  primary: gemini-2.0-flash
+  fallback: llama-3.3-70b-versatile
+  embedding_model: models/text-embedding-004
   max_retries: 3
   timeout_seconds: 30
-
-  classification_prompt: |
-    You are an expert ESG regulatory analyst. Classify the following document 
-    and return ONLY valid JSON with no preamble, no markdown, no explanation.
-
-    Rules:
-    - pillar must be exactly one of: E, S, G
-    - status must be exactly one of: Proposed, Consultation, Enacted, Amended
-    - urgency must be exactly one of: Low, Medium, High, Critical
-    - jurisdiction should be the primary geography (e.g., India, EU, US, UK, Global)
-    - sectors must be a list chosen from: Energy, Finance, Manufacturing, Real Estate, FMCG, 
-      Technology, Healthcare, Infrastructure, Agriculture, Aviation, Shipping, Chemicals
-    - summary must be exactly 3 plain-English sentences written for a Chief Sustainability Officer 
-      audience. Focus on: what changed, why it matters, what action is needed.
-    - date format: YYYY-MM-DD
-
-    Document title: {title}
-    Source: {source}
-    Published date: {date}
-    Content: {content}
-
-    Return JSON:
-    {
-      "title": "cleaned and concise policy title",
-      "source": "source organisation name",
-      "date": "YYYY-MM-DD",
-      "jurisdiction": "primary geography",
-      "pillar": "E|S|G",
-      "sectors": ["list", "of", "sectors"],
-      "status": "Proposed|Consultation|Enacted|Amended",
-      "urgency": "Low|Medium|High|Critical",
-      "summary": "3 sentences for CSO audience."
-    }
-
-  digest_prompt: |
-    You are a sustainability intelligence analyst writing a personalised daily brief 
-    for a Chief Sustainability Officer working in the {sectors} sector(s) with 
-    operations in {jurisdictions}.
-
-    Below are today's verified ESG policy updates relevant to this user.
-    Write a concise, professional brief structured as:
-    1. HEADLINE: One compelling sentence summarising the most important development
-    2. WHAT CHANGED: 2-3 sentences on the specific regulatory changes
-    3. WHY IT MATTERS: 2-3 sentences on business and sector implications
-    4. REQUIRED ACTION: 1-2 sentences on immediate steps (if any)
-
-    Policies:
-    {policies}
-
-    Return the brief in plain text, not JSON.
-
-# ──────────────────────────────────────────────────────────────
-# Scraping Configuration
-# ──────────────────────────────────────────────────────────────
+  classification_prompt: "You are an expert ESG regulatory analyst. Classify the following\
+    \ document \nand return ONLY valid JSON with no preamble, no markdown, no explanation.\n\
+    \nRules:\n- pillar must be exactly one of: E, S, G\n- status must be exactly one\
+    \ of: Proposed, Consultation, Enacted, Amended\n- urgency must be exactly one\
+    \ of: Low, Medium, High, Critical\n- jurisdiction should be the primary geography\
+    \ (e.g., India, EU, US, UK, Global)\n- sectors must be a list chosen from: Energy,\
+    \ Finance, Manufacturing, Real Estate, FMCG, \n  Technology, Healthcare, Infrastructure,\
+    \ Agriculture, Aviation, Shipping, Chemicals\n- summary must be exactly 3 plain-English\
+    \ sentences written for a Chief Sustainability Officer \n  audience. Focus on:\
+    \ what changed, why it matters, what action is needed.\n- date format: YYYY-MM-DD\n\
+    \nDocument title: {title}\nSource: {source}\nPublished date: {date}\nContent:\
+    \ {content}\n\nReturn JSON:\n{\n  \"title\": \"cleaned and concise policy title\"\
+    ,\n  \"source\": \"source organisation name\",\n  \"date\": \"YYYY-MM-DD\",\n\
+    \  \"jurisdiction\": \"primary geography\",\n  \"pillar\": \"E|S|G\",\n  \"sectors\"\
+    : [\"list\", \"of\", \"sectors\"],\n  \"status\": \"Proposed|Consultation|Enacted|Amended\"\
+    ,\n  \"urgency\": \"Low|Medium|High|Critical\",\n  \"summary\": \"3 sentences\
+    \ for CSO audience.\"\n}\n"
+  digest_prompt: "You are a sustainability intelligence analyst writing a personalised\
+    \ daily brief \nfor a Chief Sustainability Officer working in the {sectors} sector(s)\
+    \ with \noperations in {jurisdictions}.\n\nBelow are today's verified ESG policy\
+    \ updates relevant to this user.\nWrite a concise, professional brief structured\
+    \ as:\n1. HEADLINE: One compelling sentence summarising the most important development\n\
+    2. WHAT CHANGED: 2-3 sentences on the specific regulatory changes\n3. WHY IT MATTERS:\
+    \ 2-3 sentences on business and sector implications\n4. REQUIRED ACTION: 1-2 sentences\
+    \ on immediate steps (if any)\n\nPolicies:\n{policies}\n\nReturn the brief in\
+    \ plain text, not JSON.\n"
 scraping:
   rss_poll_interval_minutes: 30
   playwright_timeout_ms: 30000
-  playwright_max_concurrent: 3      # max concurrent Playwright pages
-  playwright_ram_guard_mb: 350      # skip Playwright if RSS RAM > this
-  max_raw_text_chars: 50000         # truncate raw text before LLM
-  user_agent: "ESGLens/1.0 (+https://bevolve.ai/eslens)"
-
-# ──────────────────────────────────────────────────────────────
-# Data Sources
-# ──────────────────────────────────────────────────────────────
+  playwright_max_concurrent: 3
+  playwright_ram_guard_mb: 350
+  max_raw_text_chars: 50000
+  user_agent: ESGLens/1.0 (+https://bevolve.ai/eslens)
 sources:
-
-  # ─── India Official Portals (Playwright) ───────────────────
-  playwright:
-    - name: "SEBI — Securities and Exchange Board of India"
-      url: "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListingAll=yes&type=1&subType=3"
-      selector: "table.style-a td a, .content-area li a"
-      frequency_minutes: 60
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "G"
-
-    - name: "MoEFCC — Ministry of Environment, Forest and Climate Change"
-      url: "https://moef.gov.in/en/notifications/"
-      selector: ".views-row a, .notification-list a"
-      frequency_minutes: 60
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "BEE — Bureau of Energy Efficiency"
-      url: "https://beeindia.gov.in/en/notification"
-      selector: ".notification-item a, table tr td a"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "RBI — Reserve Bank of India (Sustainability)"
-      url: "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
-      selector: ".tabletext a"
-      frequency_minutes: 60
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "G"
-
-    - name: "MCA — Ministry of Corporate Affairs"
-      url: "https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/notifications.html"
-      selector: ".notification-list a, table td a"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "G"
-
-    - name: "CPCB — Central Pollution Control Board"
-      url: "https://cpcb.nic.in/notifications.php"
-      selector: "table tr td a, .notif-link"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "MNRE — Ministry of New and Renewable Energy"
-      url: "https://mnre.gov.in/en/office-memorandum-circulars-and-orders/"
-      selector: ".OM-item a, table td a"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "NITI Aayog"
-      url: "https://www.niti.gov.in/publications"
-      selector: ".views-row a, .publication-title a"
-      frequency_minutes: 240
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "G"
-
-    - name: "PIB — Press Information Bureau (Environment)"
-      url: "https://pib.gov.in/allRel.aspx"
-      selector: ".content-area li a, h3 a"
-      frequency_minutes: 60
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "MoP / CCTS Carbon Credit Portal"
-      url: "https://powermin.gov.in/en/content/carbon-credit-trading-scheme"
-      selector: ".field-item a, .notification-link"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-  # ─── Global Bodies & News (RSS) ────────────────────────────
   rss:
-    - name: "ESG Today"
-      url: "https://www.esgtoday.com/feed/"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-    - name: "Carbon Brief"
-      url: "https://www.carbonbrief.org/feed/"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "E"
-
-    - name: "Down To Earth India"
-      url: "https://www.downtoearth.org.in/rss/news"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "Mongabay India"
-      url: "https://india.mongabay.com/feed/"
-      frequency_minutes: 60
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: "E"
-
-    - name: "BusinessLine Sustainability"
-      url: "https://www.thehindubusinessline.com/topic/sustainability/feeder/default.rss"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "India"
-      pillar_hint: null
-
-    - name: "Reuters Sustainability"
-      url: "https://feeds.reuters.com/reuters/environment"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "E"
-
-    - name: "ESG News"
-      url: "https://esgnews.com/feed/"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-    - name: "GRI — Global Reporting Initiative"
-      url: "https://www.globalreporting.org/about-gri/news-center/feed/"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-    - name: "CDP — Carbon Disclosure Project"
-      url: "https://www.cdp.net/en/articles/media/feed"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "E"
-
-    - name: "UNEP — UN Environment Programme"
-      url: "https://www.unep.org/news-and-stories/news/feed"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "E"
-
-    - name: "ISSB / IFRS Foundation"
-      url: "https://www.ifrs.org/news-and-events/news/feed/"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "G"
-
-    - name: "EU Taxonomy Platform"
-      url: "https://finance.ec.europa.eu/publications/feed"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "EU"
-      pillar_hint: "E"
-
-    - name: "UN Global Compact"
-      url: "https://unglobalcompact.org/news/feed"
-      frequency_minutes: 240
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-    - name: "TCFD — Task Force on Climate-related Financial Disclosures"
-      url: "https://www.fsb-tcfd.org/feed/"
-      frequency_minutes: 240
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: "E"
-
-    - name: "SustainableViews (FT)"
-      url: "https://www.sustainableviews.com/feed/"
-      frequency_minutes: 30
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-    - name: "S&P Global ESG Regulatory Tracker"
-      url: "https://www.spglobal.com/esg/insights/feed"
-      frequency_minutes: 120
-      is_active: true
-      jurisdiction: "Global"
-      pillar_hint: null
-
-# ──────────────────────────────────────────────────────────────
-# Alert Thresholds
-# ──────────────────────────────────────────────────────────────
+  - name: ESG Today
+    url: https://www.esgtoday.com/feed/
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  - name: Carbon Brief
+    url: https://www.carbonbrief.org/feed/
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: E
+  - name: Down To Earth India
+    url: https://www.downtoearth.org.in/rss/news
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+  - name: Mongabay India
+    url: https://india.mongabay.com/feed/
+    frequency_minutes: 60
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+  - name: BusinessLine Sustainability
+    url: https://www.thehindubusinessline.com/topic/sustainability/feeder/default.rss
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: India
+    pillar_hint: null
+  - name: ESG News
+    url: https://esgnews.com/feed/
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  - name: GRI — Global Reporting Initiative
+    url: https://www.globalreporting.org/about-gri/news-center/feed/
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  - name: UNEP — UN Environment Programme
+    url: https://www.unep.org/news-and-stories/news/feed
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: E
+  - name: ISSB / IFRS Foundation
+    url: https://www.ifrs.org/news-and-events/news/feed/
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: G
+  - name: UN Global Compact
+    url: https://unglobalcompact.org/news/feed
+    frequency_minutes: 240
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  - name: SustainableViews (FT)
+    url: https://www.sustainableviews.com/feed/
+    frequency_minutes: 30
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  - name: S&P Global ESG Regulatory Tracker
+    url: https://www.spglobal.com/esg/insights/feed
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: Global
+    pillar_hint: null
+  playwright:
+  - name: SEBI — Securities and Exchange Board of India
+    url: https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListingAll=yes&type=1&subType=3
+    frequency_minutes: 60
+    is_active: true
+    jurisdiction: India
+    pillar_hint: G
+    selector: table.style-a td a, .content-area li a
+  - name: MoEFCC — Ministry of Environment, Forest and Climate Change
+    url: https://moef.gov.in/en/notifications/
+    frequency_minutes: 60
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: .views-row a, .notification-list a
+  - name: BEE — Bureau of Energy Efficiency
+    url: https://beeindia.gov.in/en/notification
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: .notification-item a, table tr td a
+  - name: RBI — Reserve Bank of India (Sustainability)
+    url: https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx
+    frequency_minutes: 60
+    is_active: true
+    jurisdiction: India
+    pillar_hint: G
+    selector: .tabletext a
+  - name: MCA — Ministry of Corporate Affairs
+    url: https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/notifications.html
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: India
+    pillar_hint: G
+    selector: .notification-list a, table td a
+  - name: CPCB — Central Pollution Control Board
+    url: https://cpcb.nic.in/notifications.php
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: table tr td a, .notif-link
+  - name: MNRE — Ministry of New and Renewable Energy
+    url: https://mnre.gov.in/en/office-memorandum-circulars-and-orders/
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: .OM-item a, table td a
+  - name: NITI Aayog
+    url: https://www.niti.gov.in/publications
+    frequency_minutes: 240
+    is_active: true
+    jurisdiction: India
+    pillar_hint: G
+    selector: .views-row a, .publication-title a
+  - name: PIB — Press Information Bureau (Environment)
+    url: https://pib.gov.in/allRel.aspx
+    frequency_minutes: 60
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: .content-area li a, h3 a
+  - name: MoP / CCTS Carbon Credit Portal
+    url: https://powermin.gov.in/en/content/carbon-credit-trading-scheme
+    frequency_minutes: 120
+    is_active: true
+    jurisdiction: India
+    pillar_hint: E
+    selector: .field-item a, .notification-link
 alerts:
-  # FCM push sent IMMEDIATELY to matching users only if ALL conditions met:
   immediate_trigger_statuses:
-    - Enacted
+  - Enacted
   immediate_trigger_urgencies:
-    - High
-    - Critical
-  # All other verified policies are queued for digest only
-
-# ──────────────────────────────────────────────────────────────
-# Digest Schedule (also enforced via GitHub Actions cron)
-# ──────────────────────────────────────────────────────────────
+  - High
+  - Critical
 digest:
-  generate_cron: "30 14 * * *"   # 7:30 PM IST = 14:00 UTC
-  dispatch_cron: "30 2 * * *"    # 8:00 AM IST = 02:30 UTC
+  generate_cron: 30 14 * * *
+  dispatch_cron: 30 2 * * *
   lookback_hours: 24
-
-# ──────────────────────────────────────────────────────────────
-# Default Taxonomy (used for settings UI pre-population)
-# ──────────────────────────────────────────────────────────────
 taxonomy:
   sectors:
-    - Energy
-    - Finance
-    - Manufacturing
-    - Real Estate
-    - FMCG
-    - Technology
-    - Healthcare
-    - Infrastructure
-    - Agriculture
-    - Aviation
-    - Shipping
-    - Chemicals
-
+  - Energy
+  - Finance
+  - Manufacturing
+  - Real Estate
+  - FMCG
+  - Technology
+  - Healthcare
+  - Infrastructure
+  - Agriculture
+  - Aviation
+  - Shipping
+  - Chemicals
   jurisdictions:
-    - India
-    - EU
-    - US
-    - UK
-    - Global
-    - APAC
-    - UN
-
-# ──────────────────────────────────────────────────────────────
-# Policy Alias Map (bootstrapped — editable at runtime via DB)
-# ──────────────────────────────────────────────────────────────
+  - India
+  - EU
+  - US
+  - UK
+  - Global
+  - APAC
+  - UN
 policy_aliases:
-  - alias: "CSRD"
-    master: "Corporate Sustainability Reporting Directive"
-  - alias: "BRSR"
-    master: "Business Responsibility and Sustainability Report"
-  - alias: "EU Taxonomy"
-    master: "EU Taxonomy for Sustainable Activities"
-  - alias: "TCFD"
-    master: "Task Force on Climate-related Financial Disclosures"
-  - alias: "SFDR"
-    master: "Sustainable Finance Disclosure Regulation"
-  - alias: "PAT Scheme"
-    master: "Perform Achieve and Trade Scheme"
-  - alias: "CBAM"
-    master: "Carbon Border Adjustment Mechanism"
-  - alias: "CCTS"
-    master: "Carbon Credit Trading Scheme India"
+- alias: CSRD
+  master: Corporate Sustainability Reporting Directive
+- alias: BRSR
+  master: Business Responsibility and Sustainability Report
+- alias: EU Taxonomy
+  master: EU Taxonomy for Sustainable Activities
+- alias: TCFD
+  master: Task Force on Climate-related Financial Disclosures
+- alias: SFDR
+  master: Sustainable Finance Disclosure Regulation
+- alias: PAT Scheme
+  master: Perform Achieve and Trade Scheme
+- alias: CBAM
+  master: Carbon Border Adjustment Mechanism
+- alias: CCTS
+  master: Carbon Credit Trading Scheme India
