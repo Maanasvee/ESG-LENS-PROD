@@ -1,0 +1,32 @@
+name: ESG Digest — Dispatch (8:00 AM IST)
+
+on:
+  schedule:
+    # 8:00 AM IST = 02:30 UTC
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger Digest Dispatch
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.RAILWAY_BACKEND_URL }}/api/run-digest?phase=dispatch" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "Digest dispatch trigger failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "Digest dispatch triggered at $(date -u '+%Y-%m-%d %H:%M UTC') (8:00 AM IST)"

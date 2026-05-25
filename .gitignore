@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
+venv/
+**/venv/
+.venv/
+**/.venv/
+env/
+**/env/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Local Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+**/*.env
+
+# Build & Output Directories
+.next/
+**/.next/
+out/
+dist/
+build/
+tsconfig.tsbuildinfo
+**/*.tsbuildinfo
+
+# Databases & Vector Stores
+chroma_data/
+**/chroma_data/
+*.db
+*.sqlite
+
+# IDEs & System Files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

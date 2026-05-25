@@ -1,0 +1,32 @@
+name: ESG Pipeline — Run every 30 minutes
+
+on:
+  schedule:
+    # Every 30 minutes, all day
+    - cron: '*/30 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  trigger-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger ESG Pipeline
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.RAILWAY_BACKEND_URL }}/api/run-pipeline" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "Pipeline trigger failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "Pipeline triggered successfully"
