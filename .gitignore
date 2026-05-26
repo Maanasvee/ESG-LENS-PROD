@@ -20,6 +20,7 @@ __pycache__/
 **/.env
 **/.env.local
 **/*.env
+backend/firebase-service-account.json
 
 # Build & Output Directories
 .next/
