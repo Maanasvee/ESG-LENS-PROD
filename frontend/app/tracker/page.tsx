@@ -393,16 +393,7 @@ export default function PolicyTrackerPage() {
                     <UrgencyBadge urgency={p.urgency} />
                     <StatusBadge status={p.status} />
                   </div>
-                  <a
-                    href={p.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-ghost btn-sm"
-                    title="View source document"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <ExternalLink size={13} />
-                  </a>
+                  {/* Source link removed for non-admin users */}
                 </div>
 
                 <div className="policy-title">

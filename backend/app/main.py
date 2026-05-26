@@ -104,14 +104,17 @@ app = FastAPI(
 # ── Middleware ─────────────────────────────────────────────────
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+allowed_origins = list(dict.fromkeys([
+    settings.frontend_url,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://eslens.bevolve.ai",
+    "https://bevolve.ai",
+    "https://*.vercel.app",
+]))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "https://eslens.bevolve.ai",
-        "https://bevolve.ai",
-        "https://*.vercel.app",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

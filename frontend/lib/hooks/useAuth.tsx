@@ -3,11 +3,12 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  signInWithPopup,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
+  getRedirectResult,
 } from 'firebase/auth'
 import { auth, googleProvider, isMockAuth } from '../firebase'
 import { api } from '../api'
@@ -29,7 +30,7 @@ interface AuthContextType {
   dbUser: AppUser | null
   isAdmin: boolean
   loading: boolean
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: () => Promise<'completed' | 'redirected'>
   signInWithEmail: (email: string, password: string) => Promise<void>
   signUpWithEmail: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -50,6 +51,21 @@ function clearSessionCookie() {
 // ── Context ─────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextType | null>(null)
+
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function createMockSessionFromToken(uid: string) {
+  const role = uid.includes('admin') ? 'admin' as const : 'user' as const
+  const email = uid === 'mock-admin'
+    ? 'admin@bevolve.ai'
+    : `${role}@local.test`
+
+  return { uid, email, role }
+}
 
 // ── Mock user builder ───────────────────────────────────────────────────────
 
@@ -76,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchDbUser(token?: string): Promise<AppUser | null> {
     try {
-      const user = await api.getMe()
+      const user = await api.getMe(token)
       const appUser: AppUser = {
         id: user.id,
         email: user.email,
@@ -94,21 +110,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function handleAuthenticatedUser(fbUser: any | null, explicitToken?: string) {
+    setFirebaseUser(fbUser)
+    if (fbUser) {
+      const token = explicitToken ?? (await fbUser.getIdToken())
+      setSessionCookie(token)
+      await fetchDbUser(token)
+    } else {
+      setDbUser(null)
+      clearSessionCookie()
+    }
+    setLoading(false)
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (isMockAuth) {
-      // Restore session from localStorage
+      // Restore session from localStorage, or recover it from the auth cookie.
       const saved = typeof window !== 'undefined' ? localStorage.getItem('esg_session') : null
+      const cookieToken = getCookieValue('auth-token')
+      let restoredSession: { uid: string; email: string; role: 'admin' | 'user' } | null = null
+
       if (saved) {
         try {
           const u = JSON.parse(saved)
-          setFirebaseUser(u)
-          setDbUser(buildMockDbUser(u.uid, u.email, u.role))
-          setSessionCookie(u.uid)
+          if (u?.uid && u?.email && u?.role) {
+            restoredSession = u
+          }
         } catch {
-          clearSessionCookie()
+          restoredSession = null
         }
+      }
+
+      if (!restoredSession && cookieToken) {
+        restoredSession = createMockSessionFromToken(cookieToken)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('esg_session', JSON.stringify(restoredSession))
+        }
+      }
+
+      if (restoredSession) {
+        setFirebaseUser(restoredSession)
+        setDbUser(buildMockDbUser(restoredSession.uid, restoredSession.email, restoredSession.role))
+        setSessionCookie(restoredSession.uid)
       } else {
         clearSessionCookie()
       }
@@ -116,25 +161,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser)
-      if (fbUser) {
-        const token = await fbUser.getIdToken()
-        setSessionCookie(token)
-        await fetchDbUser(token)
-      } else {
-        setDbUser(null)
-        clearSessionCookie()
+    let unsubscribe: (() => void) | undefined
+
+    const initAuth = async () => {
+      try {
+        const redirectResult = await getRedirectResult(auth)
+        if (redirectResult?.user) {
+          const token = await redirectResult.user.getIdToken()
+          await handleAuthenticatedUser(redirectResult.user, token)
+          return
+        }
+      } catch (error) {
+        console.warn('Failed to process Firebase redirect result:', error)
       }
-      setLoading(false)
-    })
-    return unsubscribe
+
+      unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+        void handleAuthenticatedUser(fbUser)
+      })
+    }
+
+    void initAuth()
+
+    return () => {
+      unsubscribe?.()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Auth actions ──────────────────────────────────────────────────────────
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (): Promise<'completed' | 'redirected'> => {
     if (isMockAuth) {
       const uid = 'mock-admin'
       const u = { uid, email: 'admin@bevolve.ai', role: 'admin' as const }
@@ -142,12 +198,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionCookie(uid)
       setFirebaseUser(u)
       setDbUser(buildMockDbUser(uid, u.email, u.role))
-      return
+      return 'completed'
     }
-    const result = await signInWithPopup(auth, googleProvider)
-    const token = await result.user.getIdToken()
-    setSessionCookie(token)
-    await fetchDbUser(token)
+
+    if (!auth || !googleProvider) {
+      throw new Error('Google sign-in is not configured. Add your Firebase web credentials to frontend/.env.local and restart the app.')
+    }
+
+    const redirectResult = await getRedirectResult(auth)
+    if (redirectResult?.user) {
+      setFirebaseUser(redirectResult.user)
+      const token = await redirectResult.user.getIdToken()
+      setSessionCookie(token)
+      await fetchDbUser(token)
+      return 'completed'
+    }
+
+    await signInWithRedirect(auth, googleProvider)
+    return 'redirected'
   }
 
   const signInWithEmail = async (email: string, password: string) => {

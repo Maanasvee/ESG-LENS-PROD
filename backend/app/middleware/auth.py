@@ -10,6 +10,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, UserRole
@@ -50,24 +51,37 @@ async def get_current_user(
         role_part = "admin" if "admin" in parts[0] else "user"
         email = parts[1] if len(parts) > 1 else f"{role_part}@bevolve.ai"
         firebase_uid = token
-        
+
         # Build user name from email prefix
         prefix_parts = email.split("@")[0].split(".")
         name = " ".join(p.capitalize() for p in prefix_parts) if prefix_parts else f"Mock {role_part.capitalize()}"
-        
+
         result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
         user = result.scalar_one_or_none()
-        
+
         if user is None:
-            user = User(
-                firebase_uid=firebase_uid,
-                email=email,
-                name=name,
-                role=UserRole.admin if role_part == "admin" else UserRole.user,
-            )
-            db.add(user)
-            await db.flush()
-            logger.info(f"Mock user registered in development: {email} (role={user.role})")
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
+
+        if user is None:
+            try:
+                user = User(
+                    firebase_uid=firebase_uid,
+                    email=email,
+                    name=name,
+                    role=UserRole.admin if role_part == "admin" else UserRole.user,
+                )
+                db.add(user)
+                await db.flush()
+                logger.info(f"Mock user registered in development: {email} (role={user.role})")
+            except IntegrityError:
+                await db.rollback()
+                result = await db.execute(select(User).where(User.email == email))
+                user = result.scalar_one_or_none()
+
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to create or load mock user")
+
         return user
 
     try:
@@ -84,20 +98,40 @@ async def get_current_user(
     email = decoded.get("email", "")
     name = decoded.get("name")
 
-    # Upsert user in PostgreSQL
+    # Upsert user in SQLite/Postgres safely.
     result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(
-            firebase_uid=firebase_uid,
-            email=email,
-            name=name,
-            role=UserRole.user,
-        )
-        db.add(user)
-        await db.flush()
-        logger.info(f"New user registered: {email} (uid={firebase_uid})")
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+    if user is None:
+        try:
+            user = User(
+                firebase_uid=firebase_uid,
+                email=email,
+                name=name,
+                role=UserRole.user,
+            )
+            db.add(user)
+            await db.flush()
+            logger.info(f"New user registered: {email} (uid={firebase_uid})")
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to create or load authenticated user")
+
+    if user.firebase_uid != firebase_uid:
+        user.firebase_uid = firebase_uid
+    if not user.name and name:
+        user.name = name
+
+    db.add(user)
+    await db.flush()
 
     return user
 

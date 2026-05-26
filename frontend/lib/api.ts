@@ -5,20 +5,34 @@ import { auth, isMockAuth } from './firebase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
-function mockBearerToken(): string | null {
-  if (typeof window === 'undefined') return null
-  const saved = localStorage.getItem('mock_user')
-  if (!saved) return null
-  try {
-    const u = JSON.parse(saved) as { uid?: string }
-    return u.uid ?? null
-  } catch {
-    return null
-  }
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
+function mockBearerToken(): string | null {
+  if (typeof window === 'undefined') return null
+
+  const saved = localStorage.getItem('esg_session')
+  if (saved) {
+    try {
+      const u = JSON.parse(saved) as { uid?: string }
+      if (u.uid) return u.uid
+    } catch {
+      // fall through to cookie fallback below
+    }
+  }
+
+  return getCookieValue('auth-token')
+}
+
+async function getAuthHeaders(authToken?: string): Promise<HeadersInit> {
   const base: HeadersInit = { 'Content-Type': 'application/json' }
+
+  if (authToken) {
+    return { ...base, Authorization: `Bearer ${authToken}` }
+  }
 
   if (isMockAuth) {
     const token = mockBearerToken()
@@ -33,9 +47,10 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  authToken?: string
 ): Promise<T> {
-  const headers = await getAuthHeaders()
+  const headers = await getAuthHeaders(authToken)
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: { ...headers, ...(options.headers || {}) },
@@ -164,8 +179,8 @@ export interface SearchResult {
 
 export const api = {
   // Users
-  async getMe(): Promise<User> {
-    return apiFetch('/api/users/me')
+  async getMe(authToken?: string): Promise<User> {
+    return apiFetch('/api/users/me', {}, authToken)
   },
 
   async updatePrefs(prefs: Partial<Pick<User, 'sector_prefs' | 'jurisdiction_prefs' | 'email_digest_opt_in'>>): Promise<User> {

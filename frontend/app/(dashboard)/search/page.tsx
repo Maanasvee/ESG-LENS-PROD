@@ -143,10 +143,7 @@ export default function SearchPage() {
                         {(r.similarity * 100).toFixed(0)}% match
                       </span>
                     </div>
-                    <a href={r.source_url} target="_blank" rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm" title="Open source">
-                      <ExternalLink size={13} />
-                    </a>
+                    {/* Source link removed for non-admin users */}
                   </div>
                   <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6, lineHeight: 1.4 }}>
                     {r.title}

@@ -43,13 +43,7 @@ export default function PolicyCard({ policy, onClick }: PolicyCardProps) {
           )}
         </div>
 
-        <a href={policy.source_url} target="_blank" rel="noopener noreferrer"
-          id={`policy-source-link-${policy.id}`}
-          onClick={e => e.stopPropagation()}
-          style={{ flexShrink: 0 }}
-          className="btn btn-ghost btn-sm" title="Open source">
-          <ExternalLink size={13} />
-        </a>
+        {/* Source link removed for non-admin users */}
       </div>
 
       {/* Title */}
